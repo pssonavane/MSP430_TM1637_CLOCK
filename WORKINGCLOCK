@@ -1,0 +1,85 @@
+//#include <Arduino.h>
+#include <TM1637Display.h>
+
+// Module connection pins (Digital Pins)
+#define CLK 4
+#define DIO 5
+
+// The amount of time (in milliseconds) between tests
+#define TEST_DELAY   500
+
+TM1637Display display(CLK, DIO);
+
+unsigned int current_hours = 4;
+unsigned int current_minutes = 35;
+
+//Timer Variable
+unsigned int old_minutes = 0, minutes = 0;
+unsigned int  time_milli = 0;
+unsigned int dot = 0;
+uint8_t data[] = { 0x00, 0xff, 0x00, 0x00 };
+
+void setup()
+{
+  display.setBrightness(0xf);
+}
+
+
+
+void loop()
+{
+
+  //Hours Display
+  if(current_hours < 10){
+    data[0] = display.encodeDigit(0);//MSB Hours Digit
+    data[1] = display.encodeDigit(current_hours%10);//LSB Hours Digit
+  }else {
+     data[0] = display.encodeDigit(current_hours/10);
+     data[1] = display.encodeDigit(current_hours%10);
+  }
+
+  //Minute Display
+  if(current_minutes < 10){
+    data[2] = display.encodeDigit(0);
+    data[3] = display.encodeDigit(current_minutes%10);
+  }else {
+    data[2] = display.encodeDigit(current_minutes/10);
+    data[3] = display.encodeDigit(current_minutes%10);
+  }
+
+  //Flashing Second DOT
+  if(dot == 0){
+    data[1] = data[1] & 0b01111111;
+  }else {
+    data[1] = data[1] | 0b10000000;
+  }
+
+  //Display the time
+  display.setSegments(data);
+
+  delay(500);
+  
+  //Flash seconds dot every second
+  if((millis() - time_milli) >= 500){
+    dot = ~dot;
+  }
+  time_milli = millis();
+  
+  //Calculate the delay since last boot up
+  minutes = (((time_milli/1000)/60)%60);
+  
+ if(minutes != old_minutes){
+    current_minutes += minutes;
+  }
+  old_minutes =  minutes;
+  
+  if(current_minutes == 60){
+    current_hours++;
+    current_minutes = 0;
+  }
+ 
+  if(current_hours > 12){//Change of Day
+    current_hours = 1;
+  }
+  
+}
